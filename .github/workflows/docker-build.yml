@@ -1,23 +1,64 @@
-name: Build and Test Docker Image
+name: Build and Test Dev Docker Image
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches:
+      - main
+    tags:
+      - '*'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build'
+        required: true
+        default: 'main'
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout repo
         uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.branch }}
+          fetch-depth: 0  # Required to access tags
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      - name: Download Python repo
+        run: git clone https://github.com/RickDB/PlexAniSync.git
+
+      - name: Determine image tags
+        id: vars
+        run: |
+          echo "BUILD_TAGS=" >> "$GITHUB_ENV"
+
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION_TAG="${GITHUB_REF#refs/tags/}"
+            echo "VERSION_TAG=$VERSION_TAG" >> "$GITHUB_ENV"
+
+            # Get commit hash of this tag and latest commit on main
+            TAG_COMMIT=$(git rev-list -n 1 "$VERSION_TAG")
+            MAIN_COMMIT=$(git rev-parse origin/main)
+
+            echo "Tag commit: $TAG_COMMIT"
+            echo "Main commit: $MAIN_COMMIT"
+
+            if [[ "$TAG_COMMIT" == "$MAIN_COMMIT" ]]; then
+              echo "BUILD_TAGS=$VERSION_TAG" >> "$GITHUB_ENV"
+            else
+              echo "BUILD_TAGS=latest,$VERSION_TAG" >> "$GITHUB_ENV"
+            fi
+          else
+            echo "BUILD_TAGS=latest" >> "$GITHUB_ENV"
+          fi
+
       - name: Build Docker image
         run: |
-          ls -l
-          docker build -t python-docker-template .
+          for TAG in $(echo "${BUILD_TAGS}" | tr ',' ' '); do
+            echo "Building tag: $TAG"
+            docker build -t ghcr.io/${{ github.repository }}:$TAG .
+          done

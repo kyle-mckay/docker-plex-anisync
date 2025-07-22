@@ -11,4 +11,4 @@ WORKDIR /PlexAniSync
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Default command
-CMD ["python3", "PlexAniSync/PlexAniSync.py"]
+CMD ["python3", "PlexAniSync.py"]
