@@ -1,15 +1,14 @@
 # python-docker-template/Dockerfile
 FROM python:3.12-slim
 
+# Copy project files
+COPY PlexAniSync/ ./PlexAniSync/
+
 # Set working directory
-WORKDIR /app
+WORKDIR /PlexAniSync
 
 # Install dependencies
-COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project files
-COPY src/ ./src/
-
 # Default command
-CMD ["python3", "src/main.py"]
+CMD ["python3", "PlexAniSync/PlexAniSync.py"]
